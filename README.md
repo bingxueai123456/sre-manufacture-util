@@ -80,15 +80,26 @@ python main.py
 
 ---
 
-## 打包为独立应用
+## 自动打包与下载 (推荐)
 
-你可以使用 `pyinstaller` 将此工具打包成一个无需Python环境即可运行的独立应用程序。
+本项目已配置了 GitHub Actions CI/CD，可自动为 Windows 和 macOS 进行打包。这是获取可执行程序的最推荐方式。
+
+1.  **触发构建**: 每当有新的代码被推送到 `main` 分支，构建流程会自动触发。
+2.  **下载应用**:
+    - 前往本仓库的 [Actions 标签页](https://github.com/bingxueai123456/sre-manufacture-util/actions)。
+    - 在列表中点击最新的一个名为 "Build and Release" 的工作流运行记录。
+    - 在详情页面下方找到名为 **Artifacts** 的部分。
+    - 点击 `windows-executable` 和 `macos-app` 下载对应的压缩包，解压后即可使用。
+
+---
+
+## 手动打包 (开发者选项)
+
+如果你希望在本地手动打包，可以参考以下步骤。
 
 **重要前提：** `PyInstaller` **不支持交叉编译**。这意味着你必须在目标操作系统和架构上运行打包命令。
 - 要想打包成 Windows 应用，你必须在 Windows 系统上执行命令。
 - 要想打包成 macOS 应用，你必须在 macOS 系统上执行命令。
-
----
 
 ### 在 Windows 上打包 (64位 .exe)
 
@@ -99,8 +110,6 @@ python main.py
     pyinstaller --name SRE-QR-Generator --onefile --windowed main.py
     ```
 4.  打包完成后，在项目目录下的 `dist` 文件夹中找到 `SRE-QR-Generator.exe` 文件。
-
----
 
 ### 在 macOS 上打包 (ARM .app)
 
