@@ -84,33 +84,37 @@ python main.py
 
 你可以使用 `pyinstaller` 将此工具打包成一个无需Python环境即可运行的独立应用程序。
 
-**通用命令格式**:
-```bash
-pyinstaller --name SRE-QR-Generator --onefile --windowed main.py
-```
-- `--name`: 指定生成文件的名称。
-- `--onefile`: 将所有内容打包到单个可执行文件中。
-- `--windowed`: 在Windows上隐藏命令行窗口；在macOS上生成 `.app` 包。
+**重要前提：** `PyInstaller` **不支持交叉编译**。这意味着你必须在目标操作系统和架构上运行打包命令。
+- 要想打包成 Windows 应用，你必须在 Windows 系统上执行命令。
+- 要想打包成 macOS 应用，你必须在 macOS 系统上执行命令。
 
-### 在 Windows 上打包 (.exe)
+---
 
-1.  按照上述步骤安装好所有依赖。
-2.  在激活了虚拟环境的终端中，进入项目根目录。
-3.  执行打包命令：
+### 在 Windows 上打包 (64位 .exe)
+
+1.  **环境要求**: 一台64位 Windows 电脑，并已安装64位版本的 Python。
+2.  按照“安装与运行”部分的说明，在 Windows 上准备好虚拟环境并安装依赖。
+3.  在激活了虚拟环境的终端 (CMD 或 PowerShell) 中，执行打包命令：
     ```bash
     pyinstaller --name SRE-QR-Generator --onefile --windowed main.py
     ```
-4.  打包完成后，在项目目录下的 `dist` 文件夹中找到 `SRE-QR-Generator.exe` 文件，即可使用和分发。
+4.  打包完成后，在项目目录下的 `dist` 文件夹中找到 `SRE-QR-Generator.exe` 文件。
 
-### 在 macOS 上打包 (.app)
+---
 
-1.  按照上述步骤安装好所有依赖。
-2.  在激活了虚拟环境的终端中，进入项目根目录。
-3.  执行打包命令：
+### 在 macOS 上打包 (ARM .app)
+
+1.  **环境要求**: 一台使用 Apple Silicon (M1, M2, M3 等) 的 Mac 电脑，并已安装 ARM 架构的 Python 版本。
+    - 你可以通过以下命令检查你的 Python 架构，结果应为 `arm64`：
+      ```bash
+      python -c "import platform; print(platform.machine())"
+      ```
+2.  按照“安装与运行”部分的说明，在 macOS 上准备好虚拟环境并安装依赖。
+3.  在激活了虚拟环境的终端中，执行打包命令：
     ```bash
     pyinstaller --name SRE-QR-Generator --onefile --windowed main.py
     ```
-4.  打包完成后，在项目目录下的 `dist` 文件夹中找到 `SRE-QR-Generator.app`，即可使用和分发。
+4.  打包完成后，在项目目录下的 `dist` 文件夹中找到 `SRE-QR-Generator.app`。
     - **macOS 图标 (可选)**: 如果你想为 `.app` 添加自定义图标，可以准备一个 `.icns` 格式的图标文件，然后使用 `--icon` 参数：
       ```bash
       pyinstaller --name SRE-QR-Generator --onefile --windowed --icon=YourIcon.icns main.py
