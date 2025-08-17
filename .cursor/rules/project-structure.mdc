@@ -1,0 +1,33 @@
+---
+alwaysApply: true
+description: SRE 制造工具项目结构和架构指南
+---
+
+# SRE 制造工具项目结构指南
+
+## 项目概述
+这是一个基于 PySide6 的 Python 桌面应用程序，用于生成 SRE 制造相关的二维码和 JSON 配置。
+
+## 核心文件说明
+- [main.py](mdc:main.py) - 主应用程序入口点，包含完整的 PySide6 GUI 应用和所有业务逻辑
+- [requirements.txt](mdc:requirements.txt) - Python 依赖包列表
+- [README.md](mdc:README.md) - 项目文档和使用说明
+- [.github/workflows/build-and-release.yml](mdc:.github/workflows/build-and-release.yml) - CI/CD 自动打包配置
+
+## 应用架构
+- **单文件架构**: 所有功能都在 main.py 中的 MainWindow 类里实现
+- **数据流**: 输入表单 → JSON 生成 → 二维码生成 → 显示/下载
+- **UI 框架**: PySide6 (Qt for Python)
+- **核心库**: qrcode (二维码生成), Pillow (图像处理)
+
+## 打包部署
+- 使用 PyInstaller 将应用打包为独立可执行文件
+- 支持 Windows (.exe) 和 macOS (.app) 平台
+- GitHub Actions 自动化构建和发布
+
+## 扩展指南
+当添加新功能时：
+1. 新的输入字段添加到 text_fields 列表中
+2. 业务逻辑修改在 generate_qr_code() 方法中
+3. UI 样式统一使用 setStyleSheet 中定义的样式
+4. 确保新功能与现有的清空和下载功能兼容

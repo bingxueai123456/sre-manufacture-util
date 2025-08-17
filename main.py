@@ -5,16 +5,18 @@ import qrcode
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QFormLayout,
     QLineEdit, QComboBox, QPushButton, QLabel, QTextEdit, QFileDialog,
-    QSizePolicy
+    QSizePolicy, QSplitter
 )
 from PySide6.QtGui import QPixmap, QImage
-from PySide6.QtCore import Qt, Slot
+from PySide6.QtCore import Qt, Slot, QEvent
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SRE 制造工具")
-        self.setGeometry(100, 100, 600, 750)
+        # 允许窗口自由缩放并设置合适的初始尺寸/最小尺寸
+        self.setMinimumSize(800, 600)
+        self.resize(1000, 700)
 
         # --- Global Styles for Buttons ---
         self.setStyleSheet("""
@@ -28,6 +30,9 @@ class MainWindow(QMainWindow):
             }
             QPushButton:hover {
                 background-color: rgba(0, 86, 179, 0.95);
+            }
+            QPushButton:pressed {
+                background-color: rgba(0, 70, 145, 1.0);
             }
             QPushButton:disabled {
                 background-color: rgba(108, 117, 125, 0.7);
@@ -54,9 +59,8 @@ class MainWindow(QMainWindow):
         ]
 
         for name, label in text_fields:
-            # Use QTextEdit for dynamic height, but limit it
+            # Use QTextEdit for dynamic height
             widget = QTextEdit()
-            widget.setMaximumHeight(80) # Allow expanding up to ~3-4 lines
             self.inputs[name] = widget
             form_layout.addRow(label, widget)
 
@@ -66,27 +70,41 @@ class MainWindow(QMainWindow):
         self.inputs["serverType"] = self.server_type_combo
         form_layout.addRow("Server Type (SSL配置)", self.server_type_combo)
         
-        main_layout.addLayout(form_layout)
+        # 使用容器包裹表单布局，便于设置主布局的伸缩策略
+        form_container = QWidget()
+        form_container.setLayout(form_layout)
+        main_layout.addWidget(form_container)
 
         # --- Action Buttons ---
         generate_button = QPushButton("生成")
         generate_button.clicked.connect(self.generate_qr_code)
         main_layout.addWidget(generate_button)
 
-        # --- Results Display ---
+        # --- Results Display (使用分割器以支持水平拉伸) ---
         # QR Code Image
         self.qr_image_label = QLabel("二维码将显示在这里")
         self.qr_image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.qr_image_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.qr_image_label.setMinimumSize(250, 250)
-        main_layout.addWidget(self.qr_image_label)
+        self.qr_image_label.setMinimumSize(320, 320)
+        # 监听二维码区域大小变化，动态重绘
+        self.qr_image_label.installEventFilter(self)
 
         # JSON Content
         self.json_content_display = QTextEdit()
         self.json_content_display.setReadOnly(True)
-        self.json_content_display.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-        self.json_content_display.setFixedHeight(150)
-        main_layout.addWidget(self.json_content_display)
+        self.json_content_display.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.results_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.results_splitter.addWidget(self.qr_image_label)
+        self.results_splitter.addWidget(self.json_content_display)
+        # 避免任一子项被压缩为 0 宽度
+        self.results_splitter.setChildrenCollapsible(False)
+        # 使左侧二维码区域占比更大
+        self.results_splitter.setStretchFactor(0, 3)
+        self.results_splitter.setStretchFactor(1, 2)
+        # 拖动分割条时同步更新二维码显示
+        self.results_splitter.splitterMoved.connect(self._on_results_splitter_moved)
+        main_layout.addWidget(self.results_splitter)
         
         # --- Bottom Buttons ---
         self.download_button = QPushButton("下载二维码")
@@ -99,6 +117,15 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(clear_button)
 
         self.qr_data = None # To hold the generated QImage
+        self._splitter_initialized = False
+
+        # 设置主布局的伸缩策略：结果区域更多占比以便在窗口变化时自适应
+        # 索引：0=form_container, 1=generate_button, 2=results_splitter, 3=download_button, 4=clear_button
+        main_layout.setStretch(0, 0)
+        main_layout.setStretch(1, 0)
+        main_layout.setStretch(2, 1)
+        main_layout.setStretch(3, 0)
+        main_layout.setStretch(4, 0)
 
     @Slot()
     def generate_qr_code(self):
@@ -150,13 +177,8 @@ class MainWindow(QMainWindow):
         qimage = QImage(buffer, img.size[0], img.size[1], QImage.Format.Format_RGBA8888)
         self.qr_data = qimage # Save for download
 
-        # Display QImage in QLabel
-        pixmap = QPixmap.fromImage(qimage)
-        self.qr_image_label.setPixmap(pixmap.scaled(
-            self.qr_image_label.size(), 
-            Qt.AspectRatioMode.KeepAspectRatio, 
-            Qt.TransformationMode.SmoothTransformation
-        ))
+        # 根据当前显示区域尺寸自适应绘制
+        self._update_qr_pixmap()
         
         self.download_button.setEnabled(True)
 
@@ -174,7 +196,7 @@ class MainWindow(QMainWindow):
             "保存二维码", 
             default_filename,
             "PNG Files (*.png);;All Files (*)"
-        )
+        ) 
 
         if file_path:
             self.qr_data.save(file_path, "PNG")
@@ -193,15 +215,45 @@ class MainWindow(QMainWindow):
         self.qr_data = None
 
     def resizeEvent(self, event):
-        # Re-scale pixmap on window resize
-        if self.qr_data:
-            pixmap = QPixmap.fromImage(self.qr_data)
-            self.qr_image_label.setPixmap(pixmap.scaled(
-                self.qr_image_label.size(), 
-                Qt.AspectRatioMode.KeepAspectRatio, 
-                Qt.TransformationMode.SmoothTransformation
-            ))
+        # 窗口大小变化时自适应重绘二维码
+        self._update_qr_pixmap()
         super().resizeEvent(event)
+
+    def showEvent(self, event):
+        # 首次显示时，设置结果分割区为 60% (左) / 40% (右)
+        super().showEvent(event)
+        if not self._splitter_initialized and hasattr(self, "results_splitter"):
+            sizes = self.results_splitter.sizes()
+            total = sum(sizes) if sizes else 0
+            if total <= 0:
+                # 给定一个合理的默认比例
+                self.results_splitter.setSizes([3, 2])
+            else:
+                left = int(total * 0.6)
+                right = max(1, total - left)
+                self.results_splitter.setSizes([left, right])
+            self._splitter_initialized = True
+
+    def eventFilter(self, obj, event):
+        # 监听二维码 QLabel 的尺寸变化
+        if obj is self.qr_image_label and event.type() == QEvent.Resize:
+            self._update_qr_pixmap()
+        return super().eventFilter(obj, event)
+
+    @Slot(int, int)
+    def _on_results_splitter_moved(self, pos, index):
+        # 分割条拖动后重绘二维码
+        self._update_qr_pixmap()
+
+    def _update_qr_pixmap(self):
+        if not self.qr_data:
+            return
+        pixmap = QPixmap.fromImage(self.qr_data)
+        self.qr_image_label.setPixmap(pixmap.scaled(
+            self.qr_image_label.size(),
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation
+        ))
 
 
 if __name__ == "__main__":

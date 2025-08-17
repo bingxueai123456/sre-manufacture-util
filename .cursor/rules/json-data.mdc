@@ -1,0 +1,68 @@
+---
+description: JSON 数据结构和二维码生成规范
+---
+
+# JSON 数据结构和二维码规范
+
+## SRE 设备配置 JSON 结构
+项目生成的 JSON 配置遵循以下结构模式：
+
+```json
+{
+  "sn": "设备序列号",
+  "secret": "设备密钥",
+  "serverType": "SRE_TCP|NONE",
+  "deviceHost": {
+    "m": "主服务器地址",
+    "s": "备服务器地址"
+  },
+  "screenQr": "屏幕二维码内容"
+}
+```
+
+## 数据处理规则
+- **非空过滤**: 只有填写了内容的字段才会包含在最终 JSON 中
+- **嵌套结构**: m 和 s 字段自动组织到 deviceHost 对象下
+- **编码格式**: 使用 UTF-8 编码支持中文内容
+- **格式化**: JSON 输出使用 2 空格缩进，ensure_ascii=False
+
+## 字段定义
+- `sn`: 设备序列号，用于标识设备
+- `secret`: 设备密钥，安全认证使用
+- `serverType`: 服务器类型，可选值为 "SRE_TCP" 或 "NONE"
+- `deviceHost.m`: 主服务器地址
+- `deviceHost.s`: 备服务器地址  
+- `screenQr`: 屏幕显示的二维码内容
+
+## 二维码生成配置
+```python
+qr = qrcode.QRCode(
+    version=1,                              # 自动调整版本
+    error_correction=qrcode.constants.ERROR_CORRECT_L,  # 低错误纠正
+    box_size=10,                           # 每个方块的像素大小
+    border=4,                              # 边框宽度
+)
+```
+
+## 数据验证要点
+- 确保所有输入数据去除首尾空白字符
+- 验证 serverType 只能是预定义的值
+- deviceHost 对象只在 m 或 s 有值时才创建
+- JSON 生成前检查是否有有效数据
+
+## 文件命名规范
+- 二维码文件默认命名: `qr_{sn}.png`
+- 如果没有 SN，使用 `qrcode.png`
+- 支持用户自定义保存路径和文件名
+
+## 错误处理
+- 空数据时显示提示信息而不是错误
+- 图像转换失败时提供降级方案
+- 文件保存失败时给出用户友好的错误提示
+
+## 扩展数据结构
+添加新字段时：
+1. 在 text_fields 列表中定义字段
+2. 确定字段是否需要特殊的嵌套结构处理
+3. 更新数据收集逻辑
+4. 考虑向后兼容性

@@ -1,0 +1,81 @@
+---
+globs: *.py
+description: PySide6 UI 开发规范和最佳实践
+---
+
+# PySide6 UI 开发规范
+
+## 基本结构模式
+- 继承 QMainWindow 作为主窗口类
+- 使用 QWidget 作为中央控件
+- 采用布局管理器 (QVBoxLayout, QFormLayout) 而不是绝对定位
+- 使用 @Slot() 装饰器标记槽函数
+
+## 控件选择指南
+- **文本输入**: QTextEdit (支持多行动态高度) > QLineEdit (单行)
+- **选择器**: QComboBox 用于预定义选项
+- **按钮**: QPushButton 配合 clicked.connect() 信号
+- **显示**: QLabel 用于文本/图片显示，QTextEdit (只读) 用于长文本
+
+## 布局最佳实践
+```python
+# 推荐的布局结构
+central_widget = QWidget()
+self.setCentralWidget(central_widget)
+main_layout = QVBoxLayout(central_widget)
+
+# 表单布局用于输入字段
+form_layout = QFormLayout()
+form_layout.addRow("标签", widget)
+main_layout.addLayout(form_layout)
+
+# 设置控件大小策略
+widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+```
+
+## 样式和主题
+- 使用 setStyleSheet() 定义全局样式
+- CSS 样式支持悬停、禁用等状态
+- 颜色使用 rgba() 支持透明度
+- 统一的按钮样式（蓝色主题，圆角，悬停效果）
+
+## 信号和槽机制
+- 使用 @Slot() 装饰器标记槽函数
+- 连接信号：`button.clicked.connect(self.method_name)`
+- 避免在槽函数中执行耗时操作
+- 适当的错误处理和用户反馈
+
+## 图像处理
+- PIL Image → QImage → QPixmap → QLabel 的转换链
+- 使用 scaled() 方法保持宽高比缩放
+- 响应窗口大小变化：重写 resizeEvent()
+- 图像保存使用 QImage.save() 方法
+
+## 文件对话框
+```python
+file_path, _ = QFileDialog.getSaveFileName(
+    self, 
+    "对话框标题", 
+    default_filename,
+    "PNG Files (*.png);;All Files (*)"
+)
+```
+
+## 数据收集模式
+```python
+# 推荐的输入数据收集方式
+for name, widget in self.inputs.items():
+    if isinstance(widget, QTextEdit):
+        value = widget.toPlainText().strip()
+    elif isinstance(widget, QComboBox):
+        value = widget.currentText()
+    
+    if value:  # 只处理非空值
+        data[name] = value
+```
+
+## 控件状态管理
+- 使用 setEnabled() 控制控件可用性
+- 根据数据状态动态启用/禁用按钮
+- 提供清空功能重置所有输入状态
+- 保存生成的数据供后续操作使用
