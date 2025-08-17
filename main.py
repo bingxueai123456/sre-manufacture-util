@@ -18,24 +18,89 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(800, 600)
         self.resize(1000, 700)
 
-        # --- Global Styles for Buttons ---
+        # --- Global Styles (浅色卡片风) ---
         self.setStyleSheet("""
+            QWidget {
+                background: #f6f7fb;
+                color: #111827;
+                font-size: 14px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            }
+
+            /* 表单与文本输入 */
+            QTextEdit, QLineEdit, QComboBox {
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                border-radius: 8px;
+                padding: 8px;
+                selection-background-color: #dbeafe; /* 选中浅蓝 */
+            }
+            QTextEdit:focus, QLineEdit:focus, QComboBox:focus {
+                border: 1px solid #3b82f6; /* 聚焦高亮 */
+                background: #ffffff;
+            }
+
+            /* 标签文本 */
+            QLabel {
+                color: #1f2937;
+            }
+
+            /* 结果区卡片容器 */
+            QLabel#qrArea, QTextEdit#jsonArea {
+                background: #ffffff;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+            }
+            QLabel#qrArea {
+                color: #6b7280; /* 占位文字颜色 */
+            }
+
+            /* 分割条样式 */
+            QSplitter#resultsSplitter::handle {
+                background: #e5e7eb;
+            }
+            QSplitter#resultsSplitter::handle:horizontal {
+                width: 6px;
+                margin: 0 4px;
+            }
+            QSplitter#resultsSplitter::handle:hover {
+                background: #cbd5e1;
+            }
+
+            /* 按钮基础样式 */
             QPushButton {
-                background-color: rgba(0, 123, 255, 0.9);
-                color: white;
                 border: none;
-                border-radius: 4px;
-                padding: 10px;
-                font-weight: bold;
+                border-radius: 8px;
+                padding: 10px 14px;
+                font-weight: 600;
             }
-            QPushButton:hover {
-                background-color: rgba(0, 86, 179, 0.95);
+            QPushButton#primaryButton {
+                background: #2563eb; /* 主按钮蓝 */
+                color: #ffffff;
             }
-            QPushButton:pressed {
-                background-color: rgba(0, 70, 145, 1.0);
+            QPushButton#primaryButton:hover { background: #1d4ed8; }
+            QPushButton#primaryButton:pressed { background: #1e40af; }
+
+            QPushButton#secondaryButton {
+                background: #f3f4f6; /* 次按钮浅灰 */
+                color: #111827;
+                border: 1px solid #e5e7eb;
             }
+            QPushButton#secondaryButton:hover { background: #e5e7eb; }
+            QPushButton#secondaryButton:pressed { background: #d1d5db; }
+
+            QPushButton#ghostButton {
+                background: transparent;
+                color: #374151;
+                border: 1px solid #e5e7eb;
+            }
+            QPushButton#ghostButton:hover { background: #f9fafb; }
+            QPushButton#ghostButton:pressed { background: #f3f4f6; }
+
             QPushButton:disabled {
-                background-color: rgba(108, 117, 125, 0.7);
+                background: #e5e7eb;
+                color: #9ca3af;
+                border: 1px solid #e5e7eb;
             }
         """)
 
@@ -43,10 +108,13 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setSpacing(12)
 
         # --- Input Widgets ---
         self.inputs = {}
         form_layout = QFormLayout()
+        form_layout.setSpacing(8)
         
         # Define fields to be created
         # Format: (internal_name, display_label)
@@ -58,9 +126,18 @@ class MainWindow(QMainWindow):
             ("screenQr", "Screen QR (屏幕二维码内容)")
         ]
 
+        placeholder_map = {
+            "sn": "例如：SN1234567890",
+            "secret": "例如：abcd1234",
+            "m": "主服务器地址，如 10.0.0.1:8080",
+            "s": "备服务器地址，如 10.0.0.2:8080",
+            "screenQr": "例如：用于屏幕展示的二维码内容"
+        }
         for name, label in text_fields:
             # Use QTextEdit for dynamic height
             widget = QTextEdit()
+            if name in placeholder_map:
+                widget.setPlaceholderText(placeholder_map[name])
             self.inputs[name] = widget
             form_layout.addRow(label, widget)
 
@@ -73,16 +150,19 @@ class MainWindow(QMainWindow):
         # 使用容器包裹表单布局，便于设置主布局的伸缩策略
         form_container = QWidget()
         form_container.setLayout(form_layout)
+        form_container.setObjectName("formContainer")
         main_layout.addWidget(form_container)
 
         # --- Action Buttons ---
         generate_button = QPushButton("生成")
+        generate_button.setObjectName("primaryButton")
         generate_button.clicked.connect(self.generate_qr_code)
         main_layout.addWidget(generate_button)
 
         # --- Results Display (使用分割器以支持水平拉伸) ---
         # QR Code Image
         self.qr_image_label = QLabel("二维码将显示在这里")
+        self.qr_image_label.setObjectName("qrArea")
         self.qr_image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.qr_image_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.qr_image_label.setMinimumSize(320, 320)
@@ -91,10 +171,12 @@ class MainWindow(QMainWindow):
 
         # JSON Content
         self.json_content_display = QTextEdit()
+        self.json_content_display.setObjectName("jsonArea")
         self.json_content_display.setReadOnly(True)
         self.json_content_display.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         self.results_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self.results_splitter.setObjectName("resultsSplitter")
         self.results_splitter.addWidget(self.qr_image_label)
         self.results_splitter.addWidget(self.json_content_display)
         # 避免任一子项被压缩为 0 宽度
@@ -108,11 +190,13 @@ class MainWindow(QMainWindow):
         
         # --- Bottom Buttons ---
         self.download_button = QPushButton("下载二维码")
+        self.download_button.setObjectName("secondaryButton")
         self.download_button.clicked.connect(self.download_qr_code)
         self.download_button.setEnabled(False) # Disabled until QR is generated
         main_layout.addWidget(self.download_button)
 
         clear_button = QPushButton("清空")
+        clear_button.setObjectName("ghostButton")
         clear_button.clicked.connect(self.clear_all_fields)
         main_layout.addWidget(clear_button)
 
